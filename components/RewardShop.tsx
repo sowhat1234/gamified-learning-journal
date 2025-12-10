@@ -12,6 +12,7 @@ import {
   Sparkles,
   Lock,
   Gift,
+  Wand2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,9 @@ export interface ShopItem {
 interface ShopState {
   ownedItems: ShopItemId[];
   purchaseHistory: { itemId: ShopItemId; purchasedAt: string }[];
+  activeTheme: ShopItemId | null;
+  activeConfetti: ShopItemId | null;
+  activeBadge: ShopItemId | null;
 }
 
 interface RewardShopProps {
@@ -171,6 +175,9 @@ const CATEGORY_INFO: Record<
 const INITIAL_STATE: ShopState = {
   ownedItems: [],
   purchaseHistory: [],
+  activeTheme: null,
+  activeConfetti: null,
+  activeBadge: null,
 };
 
 // ============================================================================
@@ -215,6 +222,9 @@ function loadShopState(): ShopState {
       return {
         ownedItems: parsed.ownedItems || [],
         purchaseHistory: parsed.purchaseHistory || [],
+        activeTheme: parsed.activeTheme || null,
+        activeConfetti: parsed.activeConfetti || null,
+        activeBadge: parsed.activeBadge || null,
       };
     }
   } catch (error) {
@@ -301,11 +311,13 @@ function getItemColorClasses(color: string) {
 interface ShopItemCardProps {
   item: ShopItem;
   owned: boolean;
+  active: boolean;
   canAfford: boolean;
   onPurchase: () => void;
+  onApply: () => void;
 }
 
-function ShopItemCard({ item, owned, canAfford, onPurchase }: ShopItemCardProps) {
+function ShopItemCard({ item, owned, active, canAfford, onPurchase, onApply }: ShopItemCardProps) {
   const colors = getItemColorClasses(item.color);
 
   return (
@@ -314,15 +326,16 @@ function ShopItemCard({ item, owned, canAfford, onPurchase }: ShopItemCardProps)
         className={cn(
           "group relative overflow-hidden border-2 transition-all",
           colors.border,
-          owned && "bg-muted/30"
+          owned && "bg-muted/30",
+          active && "ring-2 ring-emerald-500 ring-offset-2"
         )}
       >
-        {/* Owned badge */}
+        {/* Owned/Active badge */}
         {owned && (
           <div className="absolute right-2 top-2 z-10">
-            <Badge className="gap-1 bg-emerald-500 text-white">
+            <Badge className={cn("gap-1 text-white", active ? "bg-emerald-500" : "bg-emerald-500/80")}>
               <Check className="h-3 w-3" />
-              Owned
+              {active ? "Active" : "Owned"}
             </Badge>
           </div>
         )}
@@ -357,10 +370,21 @@ function ShopItemCard({ item, owned, canAfford, onPurchase }: ShopItemCardProps)
             </div>
 
             {owned ? (
-              <Button variant="outline" size="sm" disabled className="gap-1">
-                <Check className="h-3.5 w-3.5" />
-                Owned
-              </Button>
+              active ? (
+                <Button variant="outline" size="sm" disabled className="gap-1">
+                  <Check className="h-3.5 w-3.5" />
+                  Active
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={onApply}
+                  className={cn("gap-1", colors.badge, "text-white hover:opacity-90")}
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Apply
+                </Button>
+              )
             ) : (
               <Button
                 size="sm"
@@ -455,7 +479,7 @@ function PurchaseDialog({ item, open, onClose }: PurchaseDialogProps) {
 // ============================================================================
 
 export function RewardShop({ className }: RewardShopProps) {
-  const { xp } = useGamification();
+  const { xp, spendXP } = useGamification();
   const [shopState, setShopState] = useState<ShopState>(INITIAL_STATE);
   const [purchasedItem, setPurchasedItem] = useState<ShopItem | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -465,6 +489,23 @@ export function RewardShop({ className }: RewardShopProps) {
     setShopState(loadShopState());
     setMounted(true);
   }, []);
+
+  // Apply theme when active theme changes
+  useEffect(() => {
+    if (shopState.activeTheme) {
+      // Map shop theme IDs to theme colors
+      const themeColorMap: Record<string, string> = {
+        "theme-pack-ocean": "blue",
+        "theme-pack-forest": "green",
+        "theme-pack-sunset": "orange",
+      };
+      const color = themeColorMap[shopState.activeTheme];
+      if (color) {
+        localStorage.setItem("theme-color", color);
+        document.documentElement.setAttribute("data-theme-color", color);
+      }
+    }
+  }, [shopState.activeTheme]);
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -489,17 +530,29 @@ export function RewardShop({ className }: RewardShopProps) {
     [shopState.ownedItems]
   );
 
+  // Check if item is active
+  const isActive = useCallback(
+    (item: ShopItem) => {
+      if (item.category === "themes") return shopState.activeTheme === item.id;
+      if (item.category === "confetti") return shopState.activeConfetti === item.id;
+      if (item.category === "badges") return shopState.activeBadge === item.id;
+      return false;
+    },
+    [shopState.activeTheme, shopState.activeConfetti, shopState.activeBadge]
+  );
+
   // Handle purchase
   const handlePurchase = useCallback(
     (item: ShopItem) => {
       if (xp < item.price || isOwned(item.id)) return;
 
-      // Deduct XP
-      const gamificationStore = useGamificationStore.getState();
-      gamificationStore._addXP(-item.price);
+      // Deduct XP using spendXP
+      const success = spendXP(item.price);
+      if (!success) return;
 
       // Update shop state
       const newState: ShopState = {
+        ...shopState,
         ownedItems: [...shopState.ownedItems, item.id],
         purchaseHistory: [
           ...shopState.purchaseHistory,
@@ -512,7 +565,28 @@ export function RewardShop({ className }: RewardShopProps) {
       // Show success dialog
       setPurchasedItem(item);
     },
-    [xp, shopState, isOwned]
+    [xp, shopState, isOwned, spendXP]
+  );
+
+  // Handle apply
+  const handleApply = useCallback(
+    (item: ShopItem) => {
+      if (!isOwned(item.id)) return;
+
+      const newState = { ...shopState };
+
+      if (item.category === "themes") {
+        newState.activeTheme = item.id;
+      } else if (item.category === "confetti") {
+        newState.activeConfetti = item.id;
+      } else if (item.category === "badges") {
+        newState.activeBadge = item.id;
+      }
+
+      setShopState(newState);
+      saveShopState(newState);
+    },
+    [shopState, isOwned]
   );
 
   // Stats
@@ -608,8 +682,10 @@ export function RewardShop({ className }: RewardShopProps) {
                     key={item.id}
                     item={item}
                     owned={isOwned(item.id)}
+                    active={isActive(item)}
                     canAfford={xp >= item.price}
                     onPurchase={() => handlePurchase(item)}
+                    onApply={() => handleApply(item)}
                   />
                 ))}
               </motion.div>
@@ -647,6 +723,41 @@ export function useShopItem(itemId: ShopItemId): ShopItem | undefined {
   return SHOP_ITEMS.find((item) => item.id === itemId);
 }
 
-export { SHOP_ITEMS };
+// Hook to get active theme from shop
+export function useActiveShopTheme(): { activeTheme: ShopItemId | null; themeColor: string | null } {
+  const [activeTheme, setActiveTheme] = useState<ShopItemId | null>(null);
+
+  useEffect(() => {
+    const state = loadShopState();
+    setActiveTheme(state.activeTheme);
+  }, []);
+
+  const themeColorMap: Record<string, string> = {
+    "theme-pack-ocean": "blue",
+    "theme-pack-forest": "green",
+    "theme-pack-sunset": "orange",
+  };
+
+  return {
+    activeTheme,
+    themeColor: activeTheme ? themeColorMap[activeTheme] || null : null,
+  };
+}
+
+// Hook to check if user owns any themes (bypasses level requirement)
+export function useOwnsAnyTheme(): boolean {
+  const [ownsTheme, setOwnsTheme] = useState(false);
+
+  useEffect(() => {
+    const state = loadShopState();
+    const themeItems = SHOP_ITEMS.filter((item) => item.category === "themes");
+    const hasTheme = themeItems.some((item) => state.ownedItems.includes(item.id));
+    setOwnsTheme(hasTheme);
+  }, []);
+
+  return ownsTheme;
+}
+
+export { SHOP_ITEMS, loadShopState };
 export default RewardShop;
 

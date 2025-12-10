@@ -18,6 +18,11 @@ import {
   X,
   Check,
   AlertTriangle,
+  Brain,
+  Link2,
+  Trophy,
+  Zap,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -113,6 +118,83 @@ function formatFocusMinutes(minutes: number): string {
 }
 
 // ============================================================================
+// Content Parsing Helpers
+// ============================================================================
+
+interface ParsedContent {
+  main: string;
+  simpleExplanation?: string;
+  connection?: string;
+}
+
+interface ParsedChallenge {
+  main: string;
+  win?: string;
+}
+
+interface ParsedImprove {
+  main: string;
+  takeaways?: string[];
+}
+
+function parseConceptContent(content: string): ParsedContent {
+  const parts = content.split(/\*\*Simple Explanation:\*\*/i);
+  if (parts.length === 1) {
+    return { main: content };
+  }
+  
+  const mainContent = parts[0].trim();
+  const rest = parts[1];
+  
+  const connectionParts = rest.split(/\*\*Connection:\*\*/i);
+  const simpleExplanation = connectionParts[0].trim();
+  const connection = connectionParts[1]?.trim();
+  
+  return {
+    main: mainContent,
+    simpleExplanation: simpleExplanation || undefined,
+    connection: connection || undefined,
+  };
+}
+
+function parseChallengeContent(content: string): ParsedChallenge {
+  const parts = content.split(/\*\*What Went Well:\*\*/i);
+  return {
+    main: parts[0].trim(),
+    win: parts[1]?.trim() || undefined,
+  };
+}
+
+function parseImproveContent(content: string): ParsedImprove {
+  const parts = content.split(/\*\*Key Takeaways:\*\*/i);
+  const main = parts[0].trim();
+  
+  if (parts.length === 1) {
+    return { main };
+  }
+  
+  const takeawaysText = parts[1].trim();
+  const takeaways = takeawaysText
+    .split(/\n/)
+    .map(line => line.replace(/^\d+\.\s*/, '').trim())
+    .filter(line => line.length > 0);
+  
+  return {
+    main,
+    takeaways: takeaways.length > 0 ? takeaways : undefined,
+  };
+}
+
+function getEntryTitle(entry: JournalEntry): string {
+  if (entry.title) return entry.title;
+  
+  // Extract first line or first 60 chars of concept
+  const parsed = parseConceptContent(entry.concept);
+  const firstLine = parsed.main.split('\n')[0];
+  return firstLine.length > 60 ? firstLine.substring(0, 57) + '...' : firstLine;
+}
+
+// ============================================================================
 // Entry Card Component
 // ============================================================================
 
@@ -124,6 +206,15 @@ interface EntryCardProps {
 
 function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Parse the rich content
+  const parsedConcept = parseConceptContent(entry.concept);
+  const parsedChallenge = parseChallengeContent(entry.challenge);
+  const parsedImprove = parseImproveContent(entry.improve);
+  const title = getEntryTitle(entry);
+  
+  // Check if this is an enhanced entry (has structured content)
+  const isEnhancedEntry = !!(parsedConcept.simpleExplanation || parsedChallenge.win || parsedImprove.takeaways);
 
   return (
     <motion.div
@@ -148,7 +239,7 @@ function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
         tabIndex={0}
         role="button"
         aria-expanded={isExpanded}
-        aria-label={`Journal entry: ${entry.concept.substring(0, 50)}${entry.concept.length > 50 ? "..." : ""}`}
+        aria-label={`Journal entry: ${title}`}
       >
         <CardContent className="p-0">
           {/* Header */}
@@ -169,9 +260,15 @@ function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
                     <span>{formatFocusMinutes(entry.focus)}</span>
                   </div>
                 )}
+                {entry.focusLevel && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Target className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="text-violet-500 font-medium">{entry.focusLevel}/10</span>
+                  </div>
+                )}
               </div>
               <h3 className="line-clamp-2 font-medium leading-snug">
-                {entry.concept}
+                {title}
               </h3>
             </div>
             <motion.div
@@ -212,16 +309,42 @@ function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
                 className="overflow-hidden"
               >
                 <div className="border-t bg-muted/30 p-4 space-y-4">
-                  {/* Concept */}
+                  {/* Main Concept */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
                       <Lightbulb className="h-4 w-4" />
                       <span>What I Learned</span>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {entry.concept}
+                      {parsedConcept.main}
                     </p>
                   </div>
+
+                  {/* Simple Explanation (Feynman) */}
+                  {parsedConcept.simpleExplanation && (
+                    <div className="space-y-1.5 pl-4 border-l-2 border-purple-500/30">
+                      <div className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+                        <Brain className="h-4 w-4" />
+                        <span>Simple Explanation</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {parsedConcept.simpleExplanation}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Connection */}
+                  {parsedConcept.connection && (
+                    <div className="space-y-1.5 pl-4 border-l-2 border-cyan-500/30">
+                      <div className="flex items-center gap-2 text-sm font-medium text-cyan-600 dark:text-cyan-400">
+                        <Link2 className="h-4 w-4" />
+                        <span>Connection</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {parsedConcept.connection}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Challenge */}
                   <div className="space-y-1.5">
@@ -230,20 +353,67 @@ function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
                       <span>Challenges</span>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {entry.challenge}
+                      {parsedChallenge.main}
                     </p>
                   </div>
 
-                  {/* Improve */}
+                  {/* Win */}
+                  {parsedChallenge.win && (
+                    <div className="space-y-1.5 pl-4 border-l-2 border-yellow-500/30">
+                      <div className="flex items-center gap-2 text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                        <Trophy className="h-4 w-4" />
+                        <span>What Went Well</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {parsedChallenge.win}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Improve / Goal */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                       <Rocket className="h-4 w-4" />
                       <span>Tomorrow&apos;s Goal</span>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {entry.improve}
+                      {parsedImprove.main}
                     </p>
                   </div>
+
+                  {/* Key Takeaways */}
+                  {parsedImprove.takeaways && parsedImprove.takeaways.length > 0 && (
+                    <div className="space-y-2 rounded-lg bg-orange-500/5 border border-orange-500/20 p-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+                        <Zap className="h-4 w-4" />
+                        <span>Key Takeaways</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {parsedImprove.takeaways.map((takeaway, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-xs font-bold text-orange-600 dark:text-orange-400">
+                              {index + 1}
+                            </span>
+                            <span>{takeaway}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* XP Earned Badge */}
+                  {entry.xpEarned && entry.xpEarned > 0 && (
+                    <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
+                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        +{entry.xpEarned} XP earned
+                      </Badge>
+                      {isEnhancedEntry && (
+                        <Badge variant="secondary" className="bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                          Deep Reflection
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-2 border-t">
@@ -454,10 +624,13 @@ function EditDialog({ entry, open, onOpenChange, onSave }: EditDialogProps) {
 // ============================================================================
 
 export default function JournalPage() {
-  const { entries, editEntry, deleteEntry } = useJournal();
+  const { entries, editEntry, deleteEntry, getLastEntryImprovement } = useJournal();
   const [showNewEntry, setShowNewEntry] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<JournalEntry | null>(null);
+  
+  // Get the last entry's improvement goal to show as accountability reminder
+  const lastImprovement = getLastEntryImprovement();
 
   const handleEdit = useCallback((entry: JournalEntry) => {
     setEditingEntry(entry);
@@ -539,6 +712,7 @@ export default function JournalPage() {
               <GuidedJournalForm
                 onComplete={() => setShowNewEntry(false)}
                 className="mb-8"
+                lastEntryImprovement={lastImprovement}
               />
             </div>
           </motion.div>

@@ -88,6 +88,7 @@ interface GamificationState {
 
   // Actions
   _addXP: (amount: number) => void;
+  _spendXP: (amount: number) => boolean; // Returns true if successful
   _registerEntry: (entry: JournalEntry) => void;
   _resetState: () => void;
   _updateStreak: (dateISOString: string) => void;
@@ -429,6 +430,14 @@ const useGamificationStore = create<GamificationState>()(
         });
       },
 
+      _spendXP: (amount: number) => {
+        const state = get();
+        if (amount <= 0 || state.xp < amount) return false;
+
+        set({ xp: state.xp - amount });
+        return true;
+      },
+
       _updateStreak: (dateISOString: string) => {
         set((state) => {
           const entryDate = new Date(dateISOString);
@@ -742,6 +751,7 @@ export interface GamificationAPI {
 
   // Actions
   addXP: (amount: number) => void;
+  spendXP: (amount: number) => boolean;
   registerEntry: (entry: JournalEntry) => void;
   loadState: () => GamificationState;
   resetState: () => void;
@@ -853,6 +863,13 @@ export function useGamification(): GamificationAPI {
     [store]
   );
 
+  const spendXP = useCallback(
+    (amount: number): boolean => {
+      return store._spendXP(amount);
+    },
+    [store]
+  );
+
   const registerEntry = useCallback(
     (entry: JournalEntry) => {
       store._registerEntry(entry);
@@ -933,6 +950,7 @@ export function useGamification(): GamificationAPI {
 
     // Actions
     addXP,
+    spendXP,
     registerEntry,
     loadState,
     resetState,

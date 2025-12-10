@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGamification } from "@/hooks/useGamification";
+import { useOwnsAnyTheme } from "@/components/RewardShop";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -221,10 +222,12 @@ export function ThemeSwitcher({
 }: ThemeSwitcherProps) {
   const { theme, setTheme } = useTheme();
   const { isUnlocked, level } = useGamification();
+  const ownsShopTheme = useOwnsAnyTheme();
   const [mounted, setMounted] = useState(false);
 
   const darkModeUnlocked = isUnlocked("dark-mode");
-  const themesUnlocked = isUnlocked("themes");
+  // Themes unlocked either by level OR by purchasing from shop
+  const themesUnlocked = isUnlocked("themes") || ownsShopTheme;
 
   useEffect(() => {
     setMounted(true);
