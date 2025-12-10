@@ -870,8 +870,9 @@ export function useGamification(): GamificationAPI {
 
   // Check streak validity on mount (reset if broken)
   useEffect(() => {
-    if (store.lastEntryDate && store.streak > 0) {
-      const lastDate = new Date(store.lastEntryDate);
+    const state = useGamificationStore.getState();
+    if (state.lastEntryDate && state.streak > 0) {
+      const lastDate = new Date(state.lastEntryDate);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -880,12 +881,12 @@ export function useGamification(): GamificationAPI {
         useGamificationStore.setState({ streak: 0 });
       }
     }
-  }, [store.lastEntryDate, store.streak]);
+  }, []); // Only run on mount
 
   // Check weekly quest reset on mount
   useEffect(() => {
-    store._resetWeeklyQuests();
-  }, [store]);
+    useGamificationStore.getState()._resetWeeklyQuests();
+  }, []); // Only run on mount
 
   return {
     // Core stats
