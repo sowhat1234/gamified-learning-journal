@@ -105,7 +105,7 @@ npm run test:run # Run tests once
 |---------|-------|
 | **Name** | `gamified-learning-journal` |
 | **Runtime** | `Node` |
-| **Build Command** | `npm ci && npm run build` |
+| **Build Command** | `npm install --include=dev && npm run build` |
 | **Start Command** | `npm start` |
 | **Plan** | `Free` (or higher) |
 
