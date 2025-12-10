@@ -29,6 +29,15 @@ export {
   type ShopItemCategory,
   type ShopItem,
 } from "./RewardShop";
+export {
+  Skeleton,
+  CardSkeleton,
+  XPBarSkeleton,
+  EntryCardSkeleton,
+  StatCardSkeleton,
+  HeatmapSkeleton,
+  PageSkeleton,
+} from "./Skeleton";
 
 // UI components (from shadcn)
 export * from "./ui/button";

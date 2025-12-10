@@ -12,6 +12,7 @@ import {
   Sparkles,
   Settings,
   ShoppingBag,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,11 @@ const navItems = [
     title: "Journal",
     href: "/journal",
     icon: BookOpen,
+  },
+  {
+    title: "Review",
+    href: "/journal/review",
+    icon: ClipboardList,
   },
   {
     title: "Stats",
@@ -152,7 +158,7 @@ export function Sidebar() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={pathname === item.href}
+              isActive={pathname === item.href || (item.href !== "/journal" && pathname.startsWith(item.href))}
             />
           ))}
         </nav>
