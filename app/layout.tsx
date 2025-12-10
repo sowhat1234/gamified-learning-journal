@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "My App",
-  description: "A modern Next.js application",
+  title: "LearnLog - Gamified Learning Journal",
+  description: "Track your learning journey with XP, achievements, and insights. A gamified approach to knowledge retention.",
 };
 
 export default function RootLayout({

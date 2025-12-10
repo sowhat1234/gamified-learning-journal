@@ -140,7 +140,7 @@ export function Sidebar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">App</span>
+          <span className="text-xl font-bold tracking-tight">LearnLog</span>
         </div>
 
         <Separator />
@@ -192,7 +192,7 @@ export function MobileNav() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">App</span>
+            <span className="text-xl font-bold tracking-tight">LearnLog</span>
           </SheetTitle>
         </SheetHeader>
 
