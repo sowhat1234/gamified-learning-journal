@@ -1,0 +1,76 @@
+# ============================================================================
+# Render Blueprint - Gamified Learning Journal
+# ============================================================================
+# This file defines the infrastructure for deploying to Render.
+# 
+# Documentation: https://render.com/docs/blueprint-spec
+#
+# To deploy:
+#   1. Push this file to your GitHub repository
+#   2. Go to https://dashboard.render.com/blueprints
+#   3. Click "New Blueprint Instance"
+#   4. Connect your repository
+# ============================================================================
+
+services:
+  # Web Service - Next.js Application
+  - type: web
+    name: gamified-learning-journal
+    runtime: node
+    region: oregon # Options: oregon, frankfurt, singapore, ohio
+    plan: free # Options: free, starter, standard, pro
+    branch: main
+    
+    # Build Configuration
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    
+    # Health Check
+    healthCheckPath: /
+    
+    # Environment Variables
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+    
+    # Auto-deploy on push
+    autoDeploy: true
+    
+    # Build Filters (optional - only rebuild on relevant changes)
+    # buildFilter:
+    #   paths:
+    #     - app/**
+    #     - components/**
+    #     - hooks/**
+    #     - lib/**
+    #     - utils/**
+    #     - public/**
+    #     - package.json
+    #     - package-lock.json
+    #     - next.config.ts
+    #     - tailwind.config.ts
+
+# ============================================================================
+# Additional Services (uncomment if needed)
+# ============================================================================
+
+# PostgreSQL Database (if you need persistent storage)
+# databases:
+#   - name: gamified-journal-db
+#     plan: free
+#     databaseName: journal
+#     user: journal_user
+#     region: oregon
+
+# Redis Cache (if you need caching)
+# services:
+#   - type: redis
+#     name: gamified-journal-cache
+#     plan: free
+#     region: oregon
+#     maxmemoryPolicy: allkeys-lru
+
