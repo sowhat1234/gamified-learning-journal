@@ -230,12 +230,13 @@ export function ThemeSwitcher({
     setMounted(true);
   }, []);
 
+  // Force light mode if dark mode not unlocked (only run once when mounted changes)
   useEffect(() => {
-    // Force light mode if dark mode not unlocked
     if (mounted && !darkModeUnlocked && theme === "dark") {
       setTheme("light");
     }
-  }, [mounted, darkModeUnlocked, theme, setTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, darkModeUnlocked]);
 
   if (!mounted) {
     return (
